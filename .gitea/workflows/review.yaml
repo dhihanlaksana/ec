@@ -1,0 +1,33 @@
+name: RUN AI
+run-name: ${{ gitea.actor }
+on: [pull_request]
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    container:
+      image: registry.sev-2.com/ai/diff-parser:v1.7
+      credentials:
+        username: ${{ secrets.CONTAINER_REGISTRY_USER }}
+        password: ${{ secrets.CONTAINER_REGISTRY_PASS }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparing
+        shell: bash
+        run: |
+          git fetch origin main
+          git diff origin/main..HEAD > /tmp/changes.diff
+          echo "PATCH_DATA=$(cat /tmp/changes.diff | base64 -w 0)" >> "$GITHUB_ENV"
+          echo "REPO=${{ gitea.repository }}" >> "$GITHUB_ENV"
+          echo "PRID=${{ gitea.event.number }}" >> "$GITHUB_ENV"          
+      - name: Code review
+        env:
+          REPO: ${{ env.REPO }}
+          PRID: ${{ env.PRID }}
+          PATCH_DATA: ${{ env.PATCH_DATA }}
+          AI_API_URL: ${{ secrets.AI_API_URL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          APP_GITEA_TOKEN: ${{ secrets.APP_GITEA_TOKEN }}
+          APP_GITEA_URL: ${{ secrets.APP_GITEA_URL }}
+        shell: bash
+        run: /usr/src/myapp/app
